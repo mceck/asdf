@@ -32,6 +32,14 @@ where_command() {
 
   local install_path
   install_path=$(get_install_path "$plugin_name" "$install_type" "$version")
+  if [ ! -d "$install_path" ]; then
+    local best_matching_version
+    best_matching_version="$(select_plugin_best_matching_version "$plugin_name")"
+    if [ -n "$best_matching_version" ]; then
+      IFS=' ' read -r plugin_name version <<<"$best_matching_version"
+      install_path=$(get_install_path "$plugin_name" "$install_type" "$version")
+    fi
+  fi
 
   if [ -d "$install_path" ]; then
     printf "%s\n" "$install_path"
