@@ -23,6 +23,15 @@ plugin_current_command() {
   IFS=' ' read -r -a versions <<<"$full_version"
   for version in "${versions[@]}"; do
     if ! (check_if_version_exists "$plugin_name" "$version"); then
+      local best_matching_version
+      best_matching_version="$(select_plugin_best_matching_version "$plugin_name")"
+      if [ -n "$best_matching_version" ]; then
+        version_file_path="$version_file_path [$version]"
+        IFS=' ' read -r plugin_name version <<<"$best_matching_version"
+        full_version="$version*"
+      fi
+    fi
+    if ! (check_if_version_exists "$plugin_name" "$version"); then
       version_not_installed="$version"
     fi
   done

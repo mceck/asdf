@@ -64,6 +64,13 @@ install_one_local_tool() {
     local plugin_version
     plugin_versions=$(cut -d '|' -f 1 <<<"$plugin_version_and_path")
     for plugin_version in $plugin_versions; do
+      if ! (check_if_version_exists "$plugin_name" "$plugin_version"); then
+        local best_matching_version
+        best_matching_version="$(select_plugin_best_matching_version "$plugin_name")"
+        if [ -n "$best_matching_version" ]; then
+          IFS=' ' read -r plugin_name plugin_version <<<"$best_matching_version"
+        fi
+      fi
       install_tool_version "$plugin_name" "$plugin_version"
     done
   else
@@ -127,6 +134,13 @@ install_local_tool_versions() {
         some_tools_installed='yes'
         plugin_versions=$(cut -d '|' -f 1 <<<"$plugin_version_and_path")
         for plugin_version in $plugin_versions; do
+          if ! (check_if_version_exists "$plugin_name" "$plugin_version"); then
+            local best_matching_version
+            best_matching_version="$(select_plugin_best_matching_version "$plugin_name")"
+            if [ -n "$best_matching_version" ]; then
+              IFS=' ' read -r plugin_name plugin_version <<<"$best_matching_version"
+            fi
+          fi
           install_tool_version "$plugin_name" "$plugin_version"
         done
       fi
