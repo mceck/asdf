@@ -22,12 +22,12 @@ fi
 # Elvish
 elvish_semver="v0.19.2"
 # Fish
-fish_semver="3.7.0"
+fish_semver="3.7.1"
 fish_apt_semver="${fish_semver}-1~jammy"
 # Nushell
 nushell_semver="0.86.0"
 # Powershell
-powershell_semver="7.3.3"
+powershell_semver="7.4.6"
 powershell_apt_semver="${powershell_semver}-1.deb"
 
 ### Install dependencies on Linux
@@ -38,7 +38,7 @@ if [ "$RUNNER_OS" = "Linux" ]; then
   sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-debian-bullseye-prod bullseye main" > /etc/apt/sources.list.d/microsoft.list'
   sudo add-apt-repository -y ppa:fish-shell/release-3
   sudo apt-get update
-  sudo apt-get -y install curl parallel \
+  sudo apt-get --allow-downgrades -y install curl parallel \
     fish="${fish_apt_semver}" \
     powershell="${powershell_apt_semver}"
 
