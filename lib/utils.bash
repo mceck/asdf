@@ -776,16 +776,19 @@ check_inside() {
 
 select_plugin_best_matching_version() {
   local plugin=$1
-  if ([ -z "$ASDF_IGNORE_PATCH" ] && [ -z "$ASDF_IGNORE_MINOR" ]); then
+  if [ -z "$ASDF_IGNORE_PATCH" ] && [ -z "$ASDF_IGNORE_MINOR" ]; then
     return
   fi
-  local ignore_patch=$(check_inside "$ASDF_IGNORE_PATCH" "$plugin")
-  local ignore_minor=$(check_inside "$ASDF_IGNORE_MINOR" "$plugin")
-  local version=$(get_preset_version_for "$plugin")
+  local ignore_patch
+  local ignore_minor
+  local version
+  ignore_patch=$(check_inside "$ASDF_IGNORE_PATCH" "$plugin")
+  ignore_minor=$(check_inside "$ASDF_IGNORE_MINOR" "$plugin")
+  version=$(get_preset_version_for "$plugin")
   versions=$(list_installed_versions "$plugin")
-  versions=($(printf "%s\n" "${versions[@]}" | sort -Vr))
-  if [ -n "${versions}" ]; then
-    for v in ${versions[@]}; do
+  IFS=$'\n' read -r -d '' -a versions < <(printf "%s\n" "${versions[@]}" | sort -Vr)
+  if [ "${#versions[@]}" -gt 0 ]; then
+    for v in "${versions[@]}"; do
       if [ "$ignore_patch" = "1" ] && [ "$(echo "$v" | cut -d '.' -f 1-2)" = "$(echo "$version" | cut -d '.' -f 1-2)" ]; then
         printf "%s %s\n" "$plugin" "$v"
         return
@@ -802,11 +805,11 @@ select_shim_best_matching_version() {
   local shim_name=$1
   local plugin
   IFS=$'\n' read -rd '' -a plugin <<<"$(shim_plugins "$shim_name")"
-  if [ -z "$plugin" ] || ([ -z "$ASDF_IGNORE_PATCH" ] && [ -z "$ASDF_IGNORE_MINOR" ]); then
+  if [ -z "$plugin" ] || { [ -z "$ASDF_IGNORE_PATCH" ] && [ -z "$ASDF_IGNORE_MINOR" ]; }; then
     return
   fi
   plugin=${plugin[0]}
-  printf "$(select_plugin_best_matching_version "$plugin")"
+  printf "%s" "$(select_plugin_best_matching_version "$plugin")"
 }
 
 with_shim_executable() {
