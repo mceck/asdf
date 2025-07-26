@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/asdf-vm/asdf/internal/config"
+	"github.com/asdf-vm/asdf/internal/installs"
 	"github.com/asdf-vm/asdf/internal/plugins"
 	"github.com/asdf-vm/asdf/internal/toolversions"
 )
@@ -53,6 +55,43 @@ func Version(conf config.Config, plugin plugins.Plugin, directory string) (versi
 	}
 
 	return versions, found, err
+}
+
+func FindBestMatchingVersion(conf config.Config, plugin plugins.Plugin, versions []string) string {
+	availableVersions, err := installs.Installed(conf, plugin)
+	if err != nil {
+		return ""
+	}
+	ignorePatches := strings.Split(os.Getenv("ASDF_IGNORE_PATCH"), " ")
+	ignoreMinors := strings.Split(os.Getenv("ASDF_IGNORE_MINOR"), " ")
+	ignoreVersions := strings.Split(os.Getenv("ASDF_IGNORE_VERSION"), " ")
+	slices.SortFunc(availableVersions, func(a, b string) int { return -strings.Compare(a, b) })
+	if slices.Contains(ignoreVersions, plugin.Name) {
+		return availableVersions[0]
+	}
+	if len(ignorePatches) == 0 && len(ignoreMinors) == 0 {
+		return ""
+	}
+	slices.SortFunc(versions, func(a, b string) int { return -strings.Compare(a, b) })
+	for _, version := range availableVersions {
+		if slices.Contains(ignorePatches, plugin.Name) {
+			majorMinor := strings.Join(strings.Split(version, ".")[:2], ".")
+			for _, v := range versions {
+				if strings.HasPrefix(v, majorMinor) {
+					return version
+				}
+			}
+		}
+		if slices.Contains(ignoreMinors, plugin.Name) {
+			major := strings.Split(version, ".")[0]
+			for _, v := range versions {
+				if strings.HasPrefix(v, major) {
+					return version
+				}
+			}
+		}
+	}
+	return ""
 }
 
 func findVersionsInDir(conf config.Config, plugin plugins.Plugin, directory string) (versions ToolVersions, found bool, err error) {

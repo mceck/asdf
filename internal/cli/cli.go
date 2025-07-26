@@ -396,8 +396,8 @@ func currentCommand(logger *log.Logger, tool string, noHeader bool) error {
 		}
 
 		for _, plugin := range allPlugins {
-			toolversion, versionFound, versionInstalled := getVersionInfo(conf, plugin, currentDir)
-			formatCurrentVersionLine(w, plugin, toolversion, versionFound, versionInstalled, err)
+			toolversion, versionFound, versionInstalled, currentResolvedVersion := getVersionInfo(conf, plugin, currentDir)
+			formatCurrentVersionLine(w, plugin, toolversion, versionFound, versionInstalled, currentResolvedVersion, err)
 		}
 		w.Flush()
 		return nil
@@ -410,8 +410,8 @@ func currentCommand(logger *log.Logger, tool string, noHeader bool) error {
 	pluginExists := !ok
 
 	if pluginExists {
-		toolversion, versionFound, versionInstalled := getVersionInfo(conf, plugin, currentDir)
-		formatCurrentVersionLine(w, plugin, toolversion, versionFound, versionInstalled, err)
+		toolversion, versionFound, versionInstalled, currentResolvedVersion := getVersionInfo(conf, plugin, currentDir)
+		formatCurrentVersionLine(w, plugin, toolversion, versionFound, versionInstalled, currentResolvedVersion, err)
 		w.Flush()
 		if !versionFound {
 			os.Exit(126)
@@ -428,7 +428,7 @@ func currentCommand(logger *log.Logger, tool string, noHeader bool) error {
 	return nil
 }
 
-func getVersionInfo(conf config.Config, plugin plugins.Plugin, currentDir string) (resolve.ToolVersions, bool, bool) {
+func getVersionInfo(conf config.Config, plugin plugins.Plugin, currentDir string) (resolve.ToolVersions, bool, bool, string) {
 	toolversion, found, _ := resolve.Version(conf, plugin, currentDir)
 	installed := false
 	if found {
@@ -436,20 +436,24 @@ func getVersionInfo(conf config.Config, plugin plugins.Plugin, currentDir string
 		version := toolversions.Parse(firstVersion)
 		installed = installs.IsInstalled(conf, plugin, version)
 	}
-	return toolversion, found, installed
+	var currentResolvedVersion string
+	if found && !installed {
+		currentResolvedVersion = resolve.FindBestMatchingVersion(conf, plugin, toolversion.Versions)
+	}
+	return toolversion, found, installed, currentResolvedVersion
 }
 
 func writeHeader(w *tabwriter.Writer) {
 	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", "Name", "Version", "Source", "Installed")
 }
 
-func formatCurrentVersionLine(w *tabwriter.Writer, plugin plugins.Plugin, toolversion resolve.ToolVersions, found bool, installed bool, err error) error {
+func formatCurrentVersionLine(w *tabwriter.Writer, plugin plugins.Plugin, toolversion resolve.ToolVersions, found bool, installed bool, currentResolvedVersion string, err error) error {
 	if err != nil {
 		return err
 	}
 
 	// columns are: name, version, source, installed
-	version := formatVersions(toolversion.Versions)
+	version := formatVersions(toolversion.Versions, currentResolvedVersion)
 	source := formatSource(toolversion, found)
 	installedStatus := formatInstalled(toolversion, plugin.Name, found, installed)
 	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", plugin.Name, version, source, installedStatus)
@@ -473,7 +477,10 @@ func formatSource(toolversion resolve.ToolVersions, found bool) string {
 	return "______"
 }
 
-func formatVersions(versions []string) string {
+func formatVersions(versions []string, currentResolvedVersion string) string {
+	if currentResolvedVersion != "" {
+		return fmt.Sprintf("%s*", currentResolvedVersion)
+	}
 	switch len(versions) {
 	case 0:
 		return "______"
@@ -1510,6 +1517,12 @@ func whereCommand(logger *log.Logger, tool, versionStr string) error {
 		if found && len(versions.Versions) > 0 {
 			versionStruct := toolversions.Version{Type: "version", Value: versions.Versions[0]}
 			if installs.IsInstalled(conf, plugin, versionStruct) {
+				installPath := installs.InstallPath(conf, plugin, versionStruct)
+				fmt.Printf("%s", installPath)
+				return nil
+			} else {
+				currentResolvedVersion := resolve.FindBestMatchingVersion(conf, plugin, versions.Versions)
+				versionStruct = toolversions.Version{Type: "version", Value: currentResolvedVersion}
 				installPath := installs.InstallPath(conf, plugin, versionStruct)
 				fmt.Printf("%s", installPath)
 				return nil
