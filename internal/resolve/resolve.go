@@ -66,7 +66,7 @@ func FindBestMatchingVersion(conf config.Config, plugin plugins.Plugin, versions
 	ignoreMinors := strings.Split(os.Getenv("ASDF_IGNORE_MINOR"), " ")
 	ignoreVersions := strings.Split(os.Getenv("ASDF_IGNORE_VERSION"), " ")
 	slices.SortFunc(availableVersions, func(a, b string) int { return -strings.Compare(a, b) })
-	if slices.Contains(ignoreVersions, plugin.Name) {
+	if slices.Contains(ignoreVersions, plugin.Name) || slices.Contains(ignoreVersions, "*") {
 		return availableVersions[0]
 	}
 	if len(ignorePatches) == 0 && len(ignoreMinors) == 0 {
@@ -74,7 +74,7 @@ func FindBestMatchingVersion(conf config.Config, plugin plugins.Plugin, versions
 	}
 	slices.SortFunc(versions, func(a, b string) int { return -strings.Compare(a, b) })
 	for _, version := range availableVersions {
-		if slices.Contains(ignorePatches, plugin.Name) {
+		if slices.Contains(ignorePatches, plugin.Name) || slices.Contains(ignorePatches, "*") {
 			majorMinor := strings.Join(strings.Split(version, ".")[:2], ".")
 			for _, v := range versions {
 				if strings.HasPrefix(v, majorMinor) {
@@ -82,7 +82,7 @@ func FindBestMatchingVersion(conf config.Config, plugin plugins.Plugin, versions
 				}
 			}
 		}
-		if slices.Contains(ignoreMinors, plugin.Name) {
+		if slices.Contains(ignoreMinors, plugin.Name) || slices.Contains(ignoreMinors, "*") {
 			major := strings.Split(version, ".")[0]
 			for _, v := range versions {
 				if strings.HasPrefix(v, major) {
