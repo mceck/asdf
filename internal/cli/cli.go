@@ -1522,10 +1522,12 @@ func whereCommand(logger *log.Logger, tool, versionStr string) error {
 				return nil
 			}
 			currentResolvedVersion := resolve.FindBestMatchingVersion(conf, plugin, versions.Versions)
-			versionStruct = toolversions.Version{Type: "version", Value: currentResolvedVersion}
-			installPath := installs.InstallPath(conf, plugin, versionStruct)
-			fmt.Printf("%s", installPath)
-			return nil
+			if currentResolvedVersion != "" {
+				versionStruct = toolversions.Version{Type: "version", Value: currentResolvedVersion}
+				installPath := installs.InstallPath(conf, plugin, versionStruct)
+				fmt.Printf("%s", installPath)
+				return nil
+			}
 		}
 
 		// not found
