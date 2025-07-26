@@ -35,4 +35,7 @@ vet: fmt
 run: build
 	${TARGET_DIR}/${TARGET}
 
+install: build
+	cp ${TARGET_DIR}/${TARGET} ~/.local/bin/
+
 .PHONY: fmt lint vet build test run

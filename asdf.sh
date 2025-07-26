@@ -113,10 +113,10 @@ if [ "$_asdf_should_prepend" = 'yes' ]; then
 fi
 unset -v _asdf_should_prepend
 
-case ":$PATH:" in
-  *":$_asdf_bin:"*) : ;;
-  *) PATH="$_asdf_bin:$PATH" ;;
-esac
+# case ":$PATH:" in
+#   *":$_asdf_bin:"*) : ;;
+#   *) PATH="$_asdf_bin:$PATH" ;;
+# esac
 case ":$PATH:" in
   *":$_asdf_shims:"*) : ;;
   *) PATH="$_asdf_shims:$PATH" ;;
