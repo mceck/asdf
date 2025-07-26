@@ -57,6 +57,18 @@ func Version(conf config.Config, plugin plugins.Plugin, directory string) (versi
 	return versions, found, err
 }
 
+// FindBestMatchingVersion returns the best matching version for a plugin based on
+// the installed versions and the versions specified in the plugin's configuration.
+// It considers the environment variables ASDF_IGNORE_PATCH, ASDF_IGNORE_MINOR, ASDF_IGNORE_VERSION
+// These variables allow users to ignore .tool-versions constraints.
+// The best matching version is determined by the following rules:
+// If ASDF_IGNORE_VERSION is set, returns always the latest installed version of the plugin.
+// If ASDF_IGNORE_PATCH is set, returns the latest installed version that matches the major.minor version.
+// If ASDF_IGNORE_MINOR is set, returns the latest installed version that matches the major version.
+// You can set these environment variables to "*" to use the ignore rule for all plugins.
+// Example:
+// ASDF_IGNORE_PATCH=* # ignores all patch versions
+// ASDF_IGNORE_MINOR=nodejs golang # ignores all minor/patch versions for nodejs and golang
 func FindBestMatchingVersion(conf config.Config, plugin plugins.Plugin, versions []string) string {
 	availableVersions, err := installs.Installed(conf, plugin)
 	if err != nil {

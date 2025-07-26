@@ -1520,13 +1520,12 @@ func whereCommand(logger *log.Logger, tool, versionStr string) error {
 				installPath := installs.InstallPath(conf, plugin, versionStruct)
 				fmt.Printf("%s", installPath)
 				return nil
-			} else {
-				currentResolvedVersion := resolve.FindBestMatchingVersion(conf, plugin, versions.Versions)
-				versionStruct = toolversions.Version{Type: "version", Value: currentResolvedVersion}
-				installPath := installs.InstallPath(conf, plugin, versionStruct)
-				fmt.Printf("%s", installPath)
-				return nil
 			}
+			currentResolvedVersion := resolve.FindBestMatchingVersion(conf, plugin, versions.Versions)
+			versionStruct = toolversions.Version{Type: "version", Value: currentResolvedVersion}
+			installPath := installs.InstallPath(conf, plugin, versionStruct)
+			fmt.Printf("%s", installPath)
+			return nil
 		}
 
 		// not found
