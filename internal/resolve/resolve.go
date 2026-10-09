@@ -79,6 +79,9 @@ func FindBestMatchingVersion(conf config.Config, plugin plugins.Plugin, versions
 	ignoreVersions := strings.Split(os.Getenv("ASDF_IGNORE_VERSION"), " ")
 	slices.SortFunc(availableVersions, func(a, b string) int { return -strings.Compare(a, b) })
 	if slices.Contains(ignoreVersions, plugin.Name) || slices.Contains(ignoreVersions, "*") {
+		if len(availableVersions) == 0 {
+			return ""
+		}
 		return availableVersions[0]
 	}
 	if len(ignorePatches) == 0 && len(ignoreMinors) == 0 {
