@@ -24,6 +24,13 @@ import (
 
 const shimDirName = "shims"
 
+var reservedShimNames = map[string]bool{
+	// shims named `asdf` must never be generated, since it would shadow the
+	// same `asdf` command all asdf shims invoke under the hood.
+	// See https://github.com/asdf-vm/asdf/issues/2166
+	"asdf": true,
+}
+
 // UnknownCommandError is an error returned when a shim is not found
 type UnknownCommandError struct {
 	shim string
@@ -312,12 +319,21 @@ func GenerateForVersion(conf config.Config, plugin plugins.Plugin, version toolv
 
 // Write generates a shim script and writes it to disk
 func Write(conf config.Config, plugin plugins.Plugin, version toolversions.Version, executablePath string) error {
+	shimName := filepath.Base(executablePath)
+	if reservedShimNames[shimName] {
+		// Remove any stale shim left over from before this guard existed.
+		shimPath := Path(conf, shimName)
+		if err := os.Remove(shimPath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+
 	err := ensureShimDirExists(conf)
 	if err != nil {
 		return err
 	}
 
-	shimName := filepath.Base(executablePath)
 	shimPath := Path(conf, shimName)
 	versions := []toolversions.ToolVersions{{Name: plugin.Name, Versions: []string{toolversions.Format(version)}}}
 
@@ -376,7 +392,7 @@ func ToolExecutables(conf config.Config, plugin plugins.Plugin, version toolvers
 // ExecutablePaths returns a slice of absolute directory paths that tool
 // executables are contained in.
 func ExecutablePaths(conf config.Config, plugin plugins.Plugin, version toolversions.Version) (paths []string, err error) {
-	dirs, err := ExecutableDirs(plugin)
+	dirs, err := ExecutableDirs(conf, plugin, version)
 	if err != nil {
 		return []string{}, err
 	}
@@ -392,11 +408,17 @@ func ExecutablePaths(conf config.Config, plugin plugins.Plugin, version toolvers
 
 // ExecutableDirs returns a slice of relative directory names that tool executables are
 // contained in, *inside installs*
-func ExecutableDirs(plugin plugins.Plugin) ([]string, error) {
+func ExecutableDirs(conf config.Config, plugin plugins.Plugin, version toolversions.Version) ([]string, error) {
 	var stdOut strings.Builder
 	var stdErr strings.Builder
 
-	err := plugin.RunCallback("list-bin-paths", []string{}, map[string]string{}, &stdOut, &stdErr)
+	env := map[string]string{
+		"ASDF_INSTALL_TYPE":    version.Type,
+		"ASDF_INSTALL_VERSION": version.Value,
+		"ASDF_INSTALL_PATH":    installs.InstallPath(conf, plugin, version),
+	}
+
+	err := plugin.RunCallback("list-bin-paths", []string{}, env, &stdOut, &stdErr)
 	if err != nil {
 		if _, ok := err.(plugins.NoCallbackError); ok {
 			// assume all executables are located in /bin directory

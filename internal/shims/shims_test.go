@@ -388,6 +388,35 @@ func TestWrite(t *testing.T) {
 		assert.Equal(t, want, string(content))
 		os.Remove(shimPath)
 	})
+
+	for reservedName := range reservedShimNames {
+		t.Run(fmt.Sprintf("never creates a shim named %s, no matter what executable is passed", reservedName), func(t *testing.T) {
+			fakeExecutable := filepath.Join(filepath.Dir(executable), reservedName)
+			err := Write(conf, plugin, version, fakeExecutable)
+			assert.Nil(t, err)
+
+			shimPath := Path(conf, reservedName)
+			_, statErr := os.Stat(shimPath)
+			assert.True(t, os.IsNotExist(statErr), fmt.Sprintf("expected no shim to be created for the reserved name %q", reservedName))
+		})
+	}
+
+	for reservedName := range reservedShimNames {
+		t.Run(fmt.Sprintf("removes a pre-existing shim named %s left over from before this guard existed", reservedName), func(t *testing.T) {
+			shimPath := Path(conf, reservedName)
+			err := os.WriteFile(shimPath, []byte(fmt.Sprintf("exec asdf exec %q \"$@\"\n", reservedName)), 0o755)
+			assert.Nil(t, err)
+			_, statErr := os.Stat(shimPath)
+			assert.Nil(t, statErr, "test setup: expected the stale shim to exist before Write runs")
+
+			fakeExecutable := filepath.Join(filepath.Dir(executable), reservedName)
+			err = Write(conf, plugin, version, fakeExecutable)
+			assert.Nil(t, err)
+
+			_, statErr = os.Stat(shimPath)
+			assert.True(t, os.IsNotExist(statErr), fmt.Sprintf("expected the pre-existing shims/%s to be removed", reservedName))
+		})
+	}
 }
 
 func TestToolExecutables(t *testing.T) {
@@ -490,9 +519,10 @@ func TestExecutablePaths(t *testing.T) {
 func TestExecutableDirs(t *testing.T) {
 	conf, plugin := generateConfig(t)
 	installVersion(t, conf, plugin, "1.2.3")
+	versionStruct := toolversions.Version{Type: "version", Value: "1.2.3"}
 
 	t.Run("returns list only containing 'bin' when list-bin-paths callback missing", func(t *testing.T) {
-		executables, err := ExecutableDirs(plugin)
+		executables, err := ExecutableDirs(conf, plugin, versionStruct)
 		assert.Nil(t, err)
 		assert.Equal(t, executables, []string{"bin"})
 	})
@@ -502,9 +532,20 @@ func TestExecutableDirs(t *testing.T) {
 		err := os.WriteFile(filepath.Join(plugin.Dir, "bin", "list-bin-paths"), data, 0o777)
 		assert.Nil(t, err)
 
-		executables, err := ExecutableDirs(plugin)
+		executables, err := ExecutableDirs(conf, plugin, versionStruct)
 		assert.Nil(t, err)
 		assert.Equal(t, executables, []string{"foo", "bar"})
+	})
+
+	t.Run("exposes ASDF_INSTALL_* env vars to list-bin-paths", func(t *testing.T) {
+		data := []byte("echo ${ASDF_INSTALL_TYPE} ${ASDF_INSTALL_VERSION} ${ASDF_INSTALL_PATH}")
+		err := os.WriteFile(filepath.Join(plugin.Dir, "bin", "list-bin-paths"), data, 0o777)
+		assert.Nil(t, err)
+
+		executables, err := ExecutableDirs(conf, plugin, versionStruct)
+		assert.Nil(t, err)
+		assert.Equal(t, []string{"version", "1.2.3"}, executables[0:2])
+		assert.Contains(t, executables[2], "lua/1.2.3")
 	})
 }
 
