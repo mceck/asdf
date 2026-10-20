@@ -80,6 +80,10 @@ func InstallAll(conf config.Config, dir string, stdOut io.Writer, stdErr io.Writ
 	// closest .tool-versions file, but for now that is too complicated to
 	// implement.
 	for _, plugin := range plugins {
+		toolversion, _, _ := resolve.Version(conf, plugin, dir)
+		if resolve.FindBestMatchingVersion(conf, plugin, toolversion.Versions) != "" {
+			continue
+		}
 		err := Install(conf, plugin, dir, stdOut, stdErr)
 		if err != nil {
 			failures = append(failures, err)

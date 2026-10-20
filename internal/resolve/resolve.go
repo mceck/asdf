@@ -90,7 +90,11 @@ func FindBestMatchingVersion(conf config.Config, plugin plugins.Plugin, versions
 	slices.SortFunc(versions, func(a, b string) int { return -strings.Compare(a, b) })
 	for _, version := range availableVersions {
 		if slices.Contains(ignorePatches, plugin.Name) || slices.Contains(ignorePatches, "*") {
-			majorMinor := strings.Join(strings.Split(version, ".")[:2], ".")
+			ver := strings.Split(version, ".")
+			if len(ver) < 2 {
+				continue
+			}
+			majorMinor := strings.Join(ver[:2], ".")
 			for _, v := range versions {
 				if strings.HasPrefix(v, majorMinor) {
 					return version
